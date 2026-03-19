@@ -1,57 +1,74 @@
-from uuid import uuid4
-from typing import Dict
+from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from uuid import uuid4
+
+from app.models.user_model import User
 from app.schemas.user_schema import UserCreate
 
 
-# In-memory database
-users_db: Dict[str, dict] = {}
+def create_user(db: Session, user: UserCreate):
+    # Check duplicate email
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+
+    new_user = User(
+        id=str(uuid4()),
+        name=user.name,
+        email=user.email,
+        age=user.age
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
 
 
-def create_user(user: UserCreate):
-    # Check for duplicate email
-    for existing_user in users_db.values():
-        if existing_user["email"] == user.email:
-            raise HTTPException(
-                status_code=400,
-                detail="Email already registered"
-            )
-
-    user_id = str(uuid4())
-    users_db[user_id] = user.dict()
-    return {"id": user_id, **user.dict()}
+def get_all_users(db: Session):
+    return db.query(User).all()
 
 
-def get_all_users():
-    return [{"id": uid, **data} for uid, data in users_db.items()]
-
-
-def get_user(user_id: str):
-    user = users_db.get(user_id)
+def get_user(db: Session, user_id: str):
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"id": user_id, **user}
+    return user
 
 
-def update_user(user_id: str, user: UserCreate):
-    if user_id not in users_db:
+def update_user(db: Session, user_id: str, user: UserCreate):
+    existing_user = db.query(User).filter(User.id == user_id).first()
+    if not existing_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Check for duplicate email (excluding current user)
-    for uid, existing_user in users_db.items():
-        if existing_user["email"] == user.email and uid != user_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Email already registered"
-            )
+    # Check duplicate email (excluding current user)
+    email_check = db.query(User).filter(User.email == user.email).first()
+    if email_check and email_check.id != user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
 
-    users_db[user_id] = user.dict()
-    return {"id": user_id, **user.dict()}
+    existing_user.name = user.name
+    existing_user.email = user.email
+    existing_user.age = user.age
+
+    db.commit()
+    db.refresh(existing_user)
+
+    return existing_user
 
 
-def delete_user(user_id: str):
-    if user_id not in users_db:
+def delete_user(db: Session, user_id: str):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    users_db.pop(user_id)
+    db.delete(user)
+    db.commit()
+
     return {"message": "User deleted successfully"}

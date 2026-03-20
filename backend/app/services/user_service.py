@@ -19,7 +19,9 @@ def create_user(db: Session, user: UserCreate):
         id=str(uuid4()),
         name=user.name,
         email=user.email,
-        age=user.age
+        age=user.age,
+        password=user.password,   # FIXED
+        role=user.role            # FIXED
     )
 
     db.add(new_user)
@@ -56,6 +58,8 @@ def update_user(db: Session, user_id: str, user: UserCreate):
     existing_user.name = user.name
     existing_user.email = user.email
     existing_user.age = user.age
+    existing_user.password = user.password   # FIXED
+    existing_user.role = user.role           # FIXED
 
     db.commit()
     db.refresh(existing_user)

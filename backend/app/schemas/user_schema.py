@@ -6,7 +6,13 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     age: int
+    password: str
+    role: str = "customer"
 
 
-class UserResponse(UserCreate):
+class UserResponse(BaseModel):
     id: UUID
+    name: str
+    email: EmailStr
+    age: int
+    role: str

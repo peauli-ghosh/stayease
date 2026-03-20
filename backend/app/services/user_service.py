@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from app.models.user_model import User
 from app.schemas.user_schema import UserCreate
+from app.core.security import hash_password
 
 
 def create_user(db: Session, user: UserCreate):
@@ -15,13 +16,15 @@ def create_user(db: Session, user: UserCreate):
             detail="Email already registered"
         )
 
+    hashed_password = hash_password(user.password)
+
     new_user = User(
         id=str(uuid4()),
         name=user.name,
         email=user.email,
         age=user.age,
-        password=user.password,   # FIXED
-        role=user.role            # FIXED
+        password=hashed_password,
+        role=user.role
     )
 
     db.add(new_user)
@@ -58,8 +61,8 @@ def update_user(db: Session, user_id: str, user: UserCreate):
     existing_user.name = user.name
     existing_user.email = user.email
     existing_user.age = user.age
-    existing_user.password = user.password   # FIXED
-    existing_user.role = user.role           # FIXED
+    existing_user.password = hash_password(user.password)
+    existing_user.role = user.role
 
     db.commit()
     db.refresh(existing_user)
